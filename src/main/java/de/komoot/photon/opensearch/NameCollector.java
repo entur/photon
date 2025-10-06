@@ -1,5 +1,8 @@
 package de.komoot.photon.opensearch;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +15,7 @@ import java.util.stream.Collectors;
 public class NameCollector {
 
     private final Map<String, Integer> terms = new HashMap<>();
+    private static final Logger LOGGER = LogManager.getLogger();
 
     public NameCollector() {
     }
@@ -21,6 +25,10 @@ public class NameCollector {
     }
 
     public void add(String term, int searchPrio) {
+        if (term == null || term.isBlank()) {
+            LOGGER.warn("FOO: term is null or empty");
+            return;
+        }
         final var cleaned = term.replace("|", " ");
         final var currentPrio = terms.get(cleaned);
         if (currentPrio == null || currentPrio < searchPrio) {
