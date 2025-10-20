@@ -119,7 +119,7 @@ public class Server {
 
     public void refreshIndexes() throws IOException {
         waitForReady();
-        client.indices().refresh();
+        client.indices().refresh(r -> r.index(PhotonIndex.NAME));
     }
 
     public void shutdown() {
@@ -157,7 +157,6 @@ public class Server {
             try {
                 (new IndexSettingBuilder()).setSynonymFile(synonymFile).updateIndex(client, PhotonIndex.NAME);
             } catch (OpenSearchException ex) {
-                client.shutdown();
                 throw new UsageException("Could not install synonyms: " + ex.getMessage());
             }
 
