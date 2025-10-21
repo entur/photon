@@ -17,7 +17,7 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
 
     public SearchQueryBuilder(String query, boolean lenient) {
         if (query.length() < 4 || query.matches("^\\p{IsAlphabetic}+$")) {
-            importance_factor = setupShortQuery(query, lenient);
+            importance_factor = setupShortQuery(query, true);
         } else {
             importance_factor = setupFullQuery(query, lenient);
         }
@@ -79,11 +79,11 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
                 fmb.query(queryField);
                 fmb.field("collector.all.ngram");
                 fmb.boost(0.1f);
+                fmb.fuzziness("AUTO");
+                fmb.prefixLength(2);
 
                 if (lenient) {
                     fmb.minimumShouldMatch("2<-1 6<-2");
-                    fmb.fuzziness("AUTO");
-                    fmb.prefixLength(2);
                 } else {
                     fmb.operator(Operator.And);
                 }
