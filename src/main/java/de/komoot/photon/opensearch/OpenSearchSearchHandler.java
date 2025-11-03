@@ -49,7 +49,7 @@ public class OpenSearchSearchHandler implements SearchHandler<SimpleSearchReques
         final var query = new SearchQueryBuilder(request.getQuery(), lenient);
         query.addOsmTagFilter(request.getOsmTagFilters());
         query.addLayerFilter(request.getLayerFilters());
-        query.addLocationBias(request.getLocationForBias(), request.getScaleForBias(), request.getZoomForBias());
+        query.addLocationBias(request.getLocationForBias(), request.getScaleForBias(), request.getZoomForBias(), request.isUseLinearDecay());
         query.includeCategories(request.getIncludeCategories());
         query.excludeCategories(request.getExcludeCategories());
         query.addBoundingBox(request.getBbox());
