@@ -7,6 +7,7 @@ public class SearchRequestBase extends RequestBase {
     private Point locationForBias = null;
     private double scale = 0.2;
     private int zoom = 14;
+    private boolean useLinearDecay = false;
     private Envelope bbox = null;
 
     public Envelope getBbox() {
@@ -31,6 +32,10 @@ public class SearchRequestBase extends RequestBase {
         }
     }
 
+    public boolean isUseLinearDecay() {
+        return useLinearDecay;
+    }
+
     void setScale(Double scale) {
         if (scale != null) {
             this.scale = Double.max(Double.min(scale, 1.0), 0.0);
@@ -47,5 +52,9 @@ public class SearchRequestBase extends RequestBase {
         if (bbox != null) {
             this.bbox = bbox;
         }
+    }
+
+    public void setUseLinearDecay(boolean useLinearDecay) {
+        this.useLinearDecay = useLinearDecay;
     }
 }

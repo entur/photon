@@ -187,7 +187,7 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
         }
     }
 
-    public void addLocationBias(Point point, double scale, int zoom) {
+    public void addLocationBias(Point point, double scale, int zoom, boolean useLinearDecay) {
         if (point == null || zoom < 4) return;
 
         if (zoom > 18) {
@@ -196,15 +196,27 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
         double radius = (1 << (18 - zoom)) * 0.25;
         final double fnscale = Double.min(1.0, Double.max(0.0, scale));
 
-        innerQuery.functions(fn1 -> fn1
-                .weight((float) (38.0 * (1.0 - fnscale)))
-                .exp(ex -> ex
-                        .field("coordinate")
-                        .placement(p -> p
-                                .origin(JsonData.of(Map.of("lon", point.getX(), "lat", point.getY())))
-                                .decay(0.8)
-                                .offset(JsonData.of(radius / 10 + "km"))
-                                .scale(JsonData.of(radius + "km")))));
+        if (useLinearDecay) {
+            innerQuery.functions(fn1 -> fn1
+                    .weight((float) (38.0 * (1.0 - fnscale)))
+                    .linear(lin -> lin
+                            .field("coordinate")
+                            .placement(p -> p
+                                    .origin(JsonData.of(Map.of("lon", point.getX(), "lat", point.getY())))
+                                    .decay(0.8)
+                                    .offset(JsonData.of(radius / 10 + "km"))
+                                    .scale(JsonData.of(radius + "km")))));
+        } else {
+            innerQuery.functions(fn1 -> fn1
+                    .weight((float) (38.0 * (1.0 - fnscale)))
+                    .exp(ex -> ex
+                            .field("coordinate")
+                            .placement(p -> p
+                                    .origin(JsonData.of(Map.of("lon", point.getX(), "lat", point.getY())))
+                                    .decay(0.8)
+                                    .offset(JsonData.of(radius / 10 + "km"))
+                                    .scale(JsonData.of(radius + "km")))));
+        }
     }
 
     public void addBoundingBox(Envelope bbox) {
