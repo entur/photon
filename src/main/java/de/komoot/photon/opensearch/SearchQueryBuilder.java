@@ -40,9 +40,9 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
                     .field("collector.name.prefix")));
 
             if (qlen < 4) {
-                b.should(fullMatch -> fullMatch.term(ftm -> ftm
+                b.should(fullMatch -> fullMatch.match(ftm -> ftm
                         .field("collector.field.name")
-                        .value(queryField)
+                        .query(queryField)
                 ));
             } else {
                 b.should(fullMatch -> fullMatch.fuzzy(fzq -> fzq
