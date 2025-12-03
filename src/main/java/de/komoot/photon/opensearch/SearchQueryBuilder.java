@@ -167,13 +167,13 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
         var isHouseQuery = QueryBuilders.term().field(Constants.OBJECT_TYPE).value(FieldValue.of("house")).build().toQuery();
         var typeOtherQuery = QueryBuilders.term().field(Constants.OBJECT_TYPE).value(FieldValue.of("other")).build().toQuery();
 
-        if (!request.hasHouseNumber()) {
+        if (!request.hasHouseNumber() && !request.getIncludeHousenumbers()) {
             outerQuery.filter(fn -> fn.bool(b -> b
                     .mustNot(hasHouseNumberQuery)
                     .mustNot(isHouseQuery)
                     .mustNot(typeOtherQuery)
             ));
-        } else {
+        } else if (request.hasHouseNumber()) {
             var noHouseOrHouseNumber = QueryBuilders.bool().should(hasHouseNumberQuery)
                     .should(QueryBuilders.bool().mustNot(isHouseQuery).build().toQuery())
                     .build()
@@ -181,6 +181,11 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
 
             outerQuery.filter(fn -> fn.bool(b -> b
                     .must(noHouseOrHouseNumber)
+                    .mustNot(typeOtherQuery)
+            ));
+        } else {
+            // include_housenumbers is true but no housenumber in query
+            outerQuery.filter(fn -> fn.bool(b -> b
                     .mustNot(typeOtherQuery)
             ));
         }
@@ -219,7 +224,30 @@ public class SearchQueryBuilder extends BaseQueryBuilder {
         }
     }
 
+    private Query housenumberQuery = null;
+
+    /**
+     * Include housenumber results that match the query in their parent field.
+     * This allows finding addresses like "Main Street 5" when searching for "Main Street".
+     */
+    public void includeHousenumbers(String query, boolean includeHousenumbers) {
+        if (includeHousenumbers) {
+            housenumberQuery = QueryBuilders.bool()
+                    .must(m -> m.match(match -> match.field("collector.parent").query(FieldValue.of(query))))
+                    .must(m -> m.exists(e -> e.field(Constants.HOUSENUMBER)))
+                    .build().toQuery();
+        }
+    }
+
     public Query build() {
-        return outerQuery.must(innerQuery.build().toQuery()).build().toQuery();
+        Query mainQuery = innerQuery.build().toQuery();
+        if (housenumberQuery != null) {
+            mainQuery = QueryBuilders.bool()
+                    .should(mainQuery)
+                    .should(housenumberQuery)
+                    .minimumShouldMatch("1")
+                    .build().toQuery();
+        }
+        return outerQuery.must(mainQuery).build().toQuery();
     }
 }
