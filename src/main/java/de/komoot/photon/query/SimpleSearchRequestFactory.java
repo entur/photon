@@ -22,7 +22,13 @@ public class SimpleSearchRequestFactory extends SearchRequestFactoryBase impleme
         final var request = new SimpleSearchRequest();
 
         completeSearchRequest(request, context);
-        request.setQuery(context.queryParamAsClass("q", String.class).get());
+
+        var query = context.queryParamAsClass("q", String.class);
+        if (!request.getIncludeCategories().isEmpty() && query.getOrDefault("").isEmpty()) {
+            request.setQuery("");
+        } else {
+            request.setQuery(query.get());
+        }
 
         return request;
     }
