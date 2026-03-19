@@ -40,7 +40,7 @@ public class NameCollector {
     public String toCollectorString() {
         return terms.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .map(e -> String.format("%s|%d", e.getKey(), e.getValue()))
+                .map(e -> e.getKey() + "|" + e.getValue())
                 .collect(Collectors.joining(";"));
     }
 }
