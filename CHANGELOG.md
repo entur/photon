@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+* fix queries like "Oslo S" surfacing unrelated possessive-named POIs by stemming
+  English `'s` at tokenization time and folding typographic apostrophes (`’`, `‘`,
+  `ʼ`, `ʻ`) to ASCII first; takes effect after a full reimport
+
 ## [1.1.0] - 2026-04-18
 
 * add special reverse-only mode creating a smaller DB with on search capability
