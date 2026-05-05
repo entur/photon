@@ -37,10 +37,46 @@ public class IndexSettingBuilder {
     private int numShards = 1;
     private boolean hasSynonymFilter = false;
     private boolean hasClassificationFilter = false;
+    private boolean stemEnglishPossessives = false;
 
     public IndexSettingBuilder setShards(int numShards) {
         this.numShards = numShards;
         return this;
+    }
+
+    /** Opt in to English-possessive stemming and typographic-apostrophe normalization.
+     *  When enabled, `'s` is stripped at the word-delimiter stage on both index and search
+     *  side, and the variants ’ ‘ ʼ ʻ are folded to ASCII ' before any tokenizer runs. */
+    public IndexSettingBuilder setStemEnglishPossessives(boolean enabled) {
+        this.stemEnglishPossessives = enabled;
+        return this;
+    }
+
+    /** Lead char filter for the "name index" family of analyzers (index_name_full,
+     *  index_name_ngram, index_name_prefix, search_prefix, classification analyzers).
+     *  With the flag on, fold apostrophes to ASCII so word_delimiter_graph's
+     *  possessive stemmer can match them. With the flag off, no char filter runs. */
+    private CustomAnalyzer.Builder applyNameIndexCharFilters(CustomAnalyzer.Builder d) {
+        if (stemEnglishPossessives) {
+            d.charFilter("normalize_apostrophes");
+        }
+        return d;
+    }
+
+    /** Lead char filter for the search analyzer. With the flag on, fold apostrophes
+     *  so the word_delimiter_graph stemmer can strip `'s`. With the flag off, fall
+     *  back to the legacy behavior of treating apostrophes as punctuation. */
+    private CustomAnalyzer.Builder applySearchCharFilter(CustomAnalyzer.Builder d) {
+        return d.charFilter(stemEnglishPossessives ? "normalize_apostrophes" : "punctuationgreedy");
+    }
+
+    /** Lead char filters for index_raw: always punctuationgreedy (so address-field
+     *  search can match either half of "O'Connor Street"), plus apostrophe
+     *  normalization when the flag is on. */
+    private CustomAnalyzer.Builder applyIndexRawCharFilters(CustomAnalyzer.Builder d) {
+        return stemEnglishPossessives
+                ? d.charFilter("normalize_apostrophes", "punctuationgreedy")
+                : d.charFilter("punctuationgreedy");
     }
 
     public void createIndex(OpenSearchClient client, String indexName) throws IOException {
@@ -75,11 +111,11 @@ public class IndexSettingBuilder {
 
             final var synonyms = synonymConfig.getSearchSynonyms();
             if (synonyms != null && !synonyms.isEmpty()) {
-                final var normalized = synonyms.stream()
-                        .map(IndexSettingBuilder::foldApostrophes)
-                        .toList();
+                final var prepared = stemEnglishPossessives
+                        ? synonyms.stream().map(IndexSettingBuilder::foldApostrophes).toList()
+                        : synonyms;
                 settings.filter(SYNONYM_FILTER, f -> f.definition(d -> d
-                        .synonymGraph(s -> s.synonyms(normalized))
+                        .synonymGraph(s -> s.synonyms(prepared))
                 ));
                 hasSynonymFilter = true;
             }
@@ -141,11 +177,11 @@ public class IndexSettingBuilder {
         settings.filter("delimiter_search", f -> f.definition(d -> d
                 .wordDelimiterGraph(w -> w
                         .splitOnNumerics(false)
-                        .stemEnglishPossessive(true)
+                        .stemEnglishPossessive(stemEnglishPossessives)
                         .preserveOriginal(false))
         ));
 
-        builder.charFilter("normalize_apostrophes");
+        applySearchCharFilter(builder);
         builder.tokenizer("search_tokenizer");
         builder.filter(normFilters);
 
@@ -183,7 +219,7 @@ public class IndexSettingBuilder {
                 )
         ));
 
-        builder.charFilter("normalize_apostrophes");
+        applyNameIndexCharFilters(builder);
         builder.tokenizer("collection_split");
         builder.filter("delimited_term_freq", "multiplexer_" + name, "drop_empty_tokens", "unique");
 
@@ -236,14 +272,16 @@ public class IndexSettingBuilder {
                 .length(l -> l.min(1).max(500))
         ));
 
-        // Run before any tokenizer / word-delimiter filter on both the index and the search
-        // side. See APOSTROPHE_VARIANTS for the rationale.
-        final var apostropheMappings = Arrays.stream(APOSTROPHE_VARIANTS)
-                .map(v -> v + " => '")
-                .toList();
-        settings.charFilter("normalize_apostrophes", f -> f.definition(d -> d
-                .mapping(m -> m.mappings(apostropheMappings))
-        ));
+        if (stemEnglishPossessives) {
+            // Run before any tokenizer / word-delimiter filter on both the index and the
+            // search side. See APOSTROPHE_VARIANTS for the rationale.
+            final var apostropheMappings = Arrays.stream(APOSTROPHE_VARIANTS)
+                    .map(v -> v + " => '")
+                    .toList();
+            settings.charFilter("normalize_apostrophes", f -> f.definition(d -> d
+                    .mapping(m -> m.mappings(apostropheMappings))
+            ));
+        }
 
         // Used by index_raw to split compound names like "O'Connor Street" at the apostrophe
         // (the standard tokenizer would otherwise keep it as one token), so address-field
@@ -261,8 +299,7 @@ public class IndexSettingBuilder {
 
         settings.analyzer("search", f -> f.custom(buildSearchAnalyzer(NORMALIZATION_FILTERS)));
 
-        settings.analyzer("search_prefix", f -> f.custom(d -> d
-                .charFilter("normalize_apostrophes")
+        settings.analyzer("search_prefix", f -> f.custom(d -> applyNameIndexCharFilters(d)
                 .tokenizer("keyword")
                 .filter("keep_alphanum")
                 .filter(NORMALIZATION_FILTERS)
@@ -285,13 +322,13 @@ public class IndexSettingBuilder {
         ));
 
         // Apostrophe is a SUBWORD_DELIMITER here so that compound names like "O'Connor"
-        // produce subwords [O, Connor, OConnor] (with catenateAll). For English possessives
-        // (Tiffany's), stemEnglishPossessive=true strips the trailing 's at this stage,
-        // yielding only [Tiffany] - no phantom standalone 's' token.
+        // produce subwords [O, Connor, OConnor] (with catenateAll). When the
+        // -stem-english-possessives flag is on, stemEnglishPossessive=true strips trailing
+        // `'s` at this stage, so "Tiffany's" yields only [Tiffany] - no phantom 's' token.
         settings.filter("delimiter_terms", f -> f.definition(d -> d
                 .wordDelimiterGraph(w -> w
                         .preserveOriginal(false)
-                        .stemEnglishPossessive(true)
+                        .stemEnglishPossessive(stemEnglishPossessives)
                         .catenateAll(true))
         ));
 
@@ -324,8 +361,7 @@ public class IndexSettingBuilder {
                 buildClassificationAnalyser("ngram", NORMALIZATION_FILTERS, List.of("prefix_edge_ngram"))
         ));
 
-        settings.analyzer("index_name_ngram", f -> f.custom(d -> d
-                .charFilter("normalize_apostrophes")
+        settings.analyzer("index_name_ngram", f -> f.custom(d -> applyNameIndexCharFilters(d)
                 .tokenizer("collection_split")
                 .filter("delimited_term_freq",
                         "delimiter_whitespace",
@@ -335,8 +371,7 @@ public class IndexSettingBuilder {
                 .filter("unique")
         ));
 
-        settings.analyzer("index_name_prefix", f -> f.custom(d -> d
-                .charFilter("normalize_apostrophes")
+        settings.analyzer("index_name_prefix", f -> f.custom(d -> applyNameIndexCharFilters(d)
                 .tokenizer("collection_split")
                 .filter("delimited_term_freq",
                         "keep_alphanum")
@@ -344,8 +379,7 @@ public class IndexSettingBuilder {
                 .filter("prefix_edge_ngram", "unique")
         ));
 
-        settings.analyzer("index_name_full", f -> f.custom(d -> d
-                .charFilter("normalize_apostrophes")
+        settings.analyzer("index_name_full", f -> f.custom(d -> applyNameIndexCharFilters(d)
                 .tokenizer("keyword")
                 .filter("keep_alphanum")
                 .filter(NORMALIZATION_FILTERS)
@@ -363,8 +397,7 @@ public class IndexSettingBuilder {
                 .filter("lowercase")
         ));
 
-        settings.analyzer("index_raw", f -> f.custom(d -> d
-                .charFilter("normalize_apostrophes", "punctuationgreedy")
+        settings.analyzer("index_raw", f -> f.custom(d -> applyIndexRawCharFilters(d)
                 .tokenizer("standard")
                 .filter(NORMALIZATION_FILTERS)
         ));

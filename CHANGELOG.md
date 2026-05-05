@@ -5,9 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-* fix queries like "Oslo S" surfacing unrelated possessive-named POIs by stemming
-  English `'s` at tokenization time and folding typographic apostrophes (`’`, `‘`,
-  `ʼ`, `ʻ`) to ASCII first; takes effect after a full reimport
+* add `-stem-english-possessives` import flag: stems English `'s` at tokenization
+  time and folds typographic apostrophes (`’`, `‘`, `ʼ`, `ʻ`) to ASCII first.
+  Fixes queries like "Oslo S" surfacing unrelated possessive-named POIs (Tiffany's,
+  Lio's, ...). Off by default: flipping it requires a full reimport.
 
 ## [1.1.0] - 2026-04-18
 

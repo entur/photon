@@ -37,6 +37,7 @@ class PossessiveTokenizationTest extends ESBaseTester {
 
     @BeforeAll
     void setUp(@TempDir Path dataDirectory) throws IOException {
+        getProperties().setStemEnglishPossessives(true);
         setUpES(dataDirectory);
 
         Map<String, String> osloCity = new HashMap<>();

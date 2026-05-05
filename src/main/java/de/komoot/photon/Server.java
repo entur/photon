@@ -136,7 +136,10 @@ public class Server {
             client.indices().delete(d -> d.index(PhotonIndex.NAME));
         }
 
-        new IndexSettingBuilder().setShards(5).createIndex(client, PhotonIndex.NAME);
+        new IndexSettingBuilder()
+                .setShards(5)
+                .setStemEnglishPossessives(dbProperties.getStemEnglishPossessives())
+                .createIndex(client, PhotonIndex.NAME);
 
         new IndexMapping(dbProperties.getReverseOnly()).putMapping(client, PhotonIndex.NAME);
 
@@ -151,7 +154,10 @@ public class Server {
         if (dbProperties.getSynonymsInstalled() || synonymFile != null) {
 
             try {
-                (new IndexSettingBuilder()).setSynonymFile(synonymFile).updateIndex(client, PhotonIndex.NAME);
+                new IndexSettingBuilder()
+                        .setStemEnglishPossessives(dbProperties.getStemEnglishPossessives())
+                        .setSynonymFile(synonymFile)
+                        .updateIndex(client, PhotonIndex.NAME);
             } catch (OpenSearchException ex) {
                 closeClientQuietly();
                 throw new UsageException("Could not install synonyms: " + ex.getMessage());

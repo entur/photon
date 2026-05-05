@@ -42,6 +42,10 @@ public class ImportFilterConfig {
             Set up database for reverse geocoding only""")
     private boolean reverseOnly = false;
 
+    @Parameter(names = "-stem-english-possessives", category = GROUP, description = """
+            Strip English `'s` at index/search time; requires a full reimport to toggle""")
+    private boolean stemEnglishPossessives = false;
+
     public Set<String> getLanguages() {
         return new HashSet<>(languages);
     }
@@ -67,6 +71,7 @@ public class ImportFilterConfig {
         }
         dbProps.setSupportGeometries(importGeometryColumn);
         dbProps.setReverseOnly(reverseOnly);
+        dbProps.setStemEnglishPossessives(stemEnglishPossessives);
 
         if (extraTags != null) {
             dbProps.setExtraTags(extraTags);
