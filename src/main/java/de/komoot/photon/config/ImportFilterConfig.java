@@ -42,6 +42,14 @@ public class ImportFilterConfig {
             Set up database for reverse geocoding only""")
     private boolean reverseOnly = false;
 
+    @Parameter(names = "-stem-english-possessives", category = GROUP, description = """
+            Strip English `'s` suffixes at index/search time and normalize curly ’ ‘ ʼ ʻ to
+            ASCII first. Improves precision for short queries like "Oslo S" by removing
+            phantom 's' tokens from possessive POI names. Takes effect at index creation;
+            requires a full reimport to switch on or off.
+            """)
+    private boolean stemEnglishPossessives = false;
+
     public Set<String> getLanguages() {
         return new HashSet<>(languages);
     }
@@ -67,6 +75,7 @@ public class ImportFilterConfig {
         }
         dbProps.setSupportGeometries(importGeometryColumn);
         dbProps.setReverseOnly(reverseOnly);
+        dbProps.setStemEnglishPossessives(stemEnglishPossessives);
 
         if (extraTags != null) {
             dbProps.setExtraTags(extraTags);

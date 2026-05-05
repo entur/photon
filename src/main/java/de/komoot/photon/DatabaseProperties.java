@@ -26,6 +26,7 @@ public class DatabaseProperties {
     private boolean synonymsInstalled = false;
     private ConfigExtraTags extraTags = new ConfigExtraTags();
     private boolean reverseOnly = false;
+    private boolean stemEnglishPossessives = false;
 
     @SuppressWarnings("unused")
     public void setDatabaseVersion(String version) {
@@ -129,5 +130,13 @@ public class DatabaseProperties {
 
     public boolean getReverseOnly() {
         return reverseOnly;
+    }
+
+    public void setStemEnglishPossessives(boolean stemEnglishPossessives) {
+        this.stemEnglishPossessives = stemEnglishPossessives;
+    }
+
+    public boolean getStemEnglishPossessives() {
+        return stemEnglishPossessives;
     }
 }
