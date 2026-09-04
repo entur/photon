@@ -139,6 +139,7 @@ public class Server {
         new IndexSettingBuilder().setShards(5).createIndex(client, PhotonIndex.NAME);
 
         new IndexMapping(dbProperties.getReverseOnly()).putMapping(client, PhotonIndex.NAME);
+        dbProperties.setSynonymFiltersAvailable(true);
 
         saveToDatabase(dbProperties);
     }
@@ -148,7 +149,20 @@ public class Server {
         // database if the version does not fit.
         var dbProperties = loadFromDatabase();
 
+        if (dbProperties.getSynonymsInstalled()) {
+            dbProperties.setSynonymFiltersAvailable(true);
+        }
+
         if (dbProperties.getSynonymsInstalled() || synonymFile != null) {
+            if (synonymFile != null && !dbProperties.getSynonymFiltersAvailable()) {
+                LOGGER.error("""
+                        This database cannot add synonyms on the fly.
+
+                        You either need to reimport the database with the current version of Photon
+                        or run 'photon serve' once with synonyms enabled using Photon 1.3.0.
+                        """);
+                throw new UsageException("Database does not support synonyms.");
+            }
 
             try {
                 (new IndexSettingBuilder()).setSynonymFile(synonymFile).updateIndex(client, PhotonIndex.NAME);

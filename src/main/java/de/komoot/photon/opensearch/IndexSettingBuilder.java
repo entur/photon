@@ -2,7 +2,6 @@ package de.komoot.photon.opensearch;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.komoot.photon.ConfigClassificationTerm;
 import de.komoot.photon.ConfigSynonyms;
 import de.komoot.photon.UsageException;
 import org.jspecify.annotations.NullMarked;
@@ -33,8 +32,7 @@ public class IndexSettingBuilder {
 
     private final IndexSettingsAnalysis.Builder settings = new IndexSettingsAnalysis.Builder();
     private int numShards = 1;
-    private boolean hasSynonymFilter = false;
-    private boolean hasClassificationFilter = false;
+    @Nullable private ConfigSynonyms synonymConfig;
 
     public IndexSettingBuilder setShards(int numShards) {
         this.numShards = numShards;
@@ -43,6 +41,7 @@ public class IndexSettingBuilder {
 
     public void createIndex(OpenSearchClient client, String indexName) throws IOException {
         addDefaultSettings();
+        updateSynonymFilters();
 
         client.indices().create(r -> r
                 .index(indexName)
@@ -52,7 +51,7 @@ public class IndexSettingBuilder {
     }
 
     public void updateIndex(OpenSearchClient client, String indexName) throws IOException {
-        addDefaultSettings();
+        updateSynonymFilters();
 
         client.indices().close(req -> req.index(indexName));
         try {
@@ -66,54 +65,62 @@ public class IndexSettingBuilder {
 
     public IndexSettingBuilder setSynonymFile(@Nullable String synonymFile) throws IOException {
         if (synonymFile != null) {
-            final var synonymConfig = new ObjectMapper()
+            synonymConfig = new ObjectMapper()
                     .configure(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES, true)
                     .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, true)
                     .readValue(new File(synonymFile), ConfigSynonyms.class);
-
-            final var synonyms = synonymConfig.getSearchSynonyms();
-            if (synonyms != null && !synonyms.isEmpty()) {
-                settings.filter(SYNONYM_FILTER, f -> f.definition(d -> d
-                        .synonymGraph(s -> s.synonyms(synonyms))
-                ));
-                hasSynonymFilter = true;
-            }
-
-            if (!synonymConfig.getClassificationTerms().isEmpty()) {
-                setClassificationTerms(synonymConfig.getClassificationTerms());
-            }
+        } else {
+            synonymConfig = null;
         }
+
         return this;
     }
 
-    private void setClassificationTerms(Collection<ConfigClassificationTerm> terms) {
+    private void updateSynonymFilters() {
+        final var synonyms = synonymConfig == null ? null : synonymConfig.getSearchSynonyms();
+        if (synonyms != null && !synonyms.isEmpty()) {
+            settings.filter(SYNONYM_FILTER, f -> f.definition(d -> d
+                    .synonymGraph(s -> s.synonyms(synonyms))
+            ));
+        } else {
+            settings.filter(SYNONYM_FILTER, f -> f.definition(d -> d
+                    .synonymGraph(s -> s.synonyms(List.of()))
+            ));
+
+        }
+
         // Collect for each term in the list the possible classification expansions.
         Map<String, Set<String>> collector = new HashMap<>();
-        for (var term : terms) {
-            String classString = term.getClassificationString();
+        if (synonymConfig != null && !synonymConfig.getClassificationTerms().isEmpty()) {
+            for (var term : synonymConfig.getClassificationTerms()) {
+                String classString = term.getClassificationString();
 
-            for (var repl : term.terms()) {
-                String norm = repl.toLowerCase().trim();
-                if (norm.indexOf(' ') >= 0) {
-                    throw new UsageException("Syntax error in synonym file: only single word classification terms allowed.");
-                }
+                for (var repl : term.terms()) {
+                    String norm = repl.toLowerCase().trim();
+                    if (norm.indexOf(' ') >= 0) {
+                        throw new UsageException("Syntax error in synonym file: only single word classification terms allowed.");
+                    }
 
-                if (norm.length() > 1) {
-                    collector.computeIfAbsent(norm, k -> new HashSet<>()).add(classString);
+                    if (norm.length() > 1) {
+                        collector.computeIfAbsent(norm, k -> new HashSet<>()).add(classString);
+                    }
                 }
             }
         }
 
         // Create the final list of synonyms. A term can expand to any classificator or not at all.
         if (!collector.isEmpty()) {
-            final var synonyms = collector.entrySet().stream()
+            final var classificators = collector.entrySet().stream()
                     .map(e -> String.join(" => ", e.getKey(), String.join(",", e.getValue())))
                     .collect(Collectors.toList());
 
             settings.filter(CLASSIFICATION_FILTER, f -> f.definition(d -> d
-                    .synonymGraph(s -> s.synonyms(synonyms))
+                    .synonymGraph(s -> s.synonyms(classificators))
             ));
-            hasClassificationFilter = true;
+        } else {
+            settings.filter(CLASSIFICATION_FILTER, f -> f.definition(d -> d
+                    .synonymGraph(s -> s.synonyms(List.of()))
+            ));
         }
     }
 
@@ -136,19 +143,12 @@ public class IndexSettingBuilder {
         builder.tokenizer("search_tokenizer");
         builder.filter(normFilters);
 
-        List<String> extraFilters = new ArrayList<>();
-        if (hasSynonymFilter) {
-            extraFilters.add(SYNONYM_FILTER);
-        }
-        extraFilters.add("delimiter_search");
-
         settings.filter("multiplexer_search", f -> f.definition(d -> d
                 .multiplexer(m -> m
                         .preserveOriginal(false)
                         .filters("drop_classification,drop_empty_tokens,"
-                                + String.join(",", extraFilters))
-                        .filters((hasClassificationFilter ? CLASSIFICATION_FILTER + "," : "")
-                                + "keep_classification,drop_empty_tokens"))
+                                + SYNONYM_FILTER + ",delimiter_search")
+                        .filters(CLASSIFICATION_FILTER + ",keep_classification,drop_empty_tokens"))
         ));
         builder.filter("multiplexer_search");
 

@@ -24,6 +24,10 @@ public class DatabaseProperties {
     private boolean supportStructuredQueries = true;
     private boolean supportGeometries = false;
     private boolean synonymsInstalled = false;
+    // Transitory attribute that checks that the version supports the
+    // newer installation method of synonyms. Can be removed when
+    // database version becomes greater than 1.0.0-4.
+    private boolean synonymFiltersAvailable = false;
     private ConfigExtraTags extraTags = new ConfigExtraTags();
     private boolean reverseOnly = false;
 
@@ -101,6 +105,14 @@ public class DatabaseProperties {
 
     public boolean getSynonymsInstalled() {
         return synonymsInstalled;
+    }
+
+    public void setSynonymFiltersAvailable(boolean synonymFiltersAvailable) {
+        this.synonymFiltersAvailable = synonymFiltersAvailable;
+    }
+
+    public boolean getSynonymFiltersAvailable() {
+        return this.synonymFiltersAvailable;
     }
 
     public ConfigExtraTags configExtraTags() {
