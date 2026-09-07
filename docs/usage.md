@@ -185,6 +185,23 @@ By using the parameter `-reverse-only` the database can be set up, so that
 only the `/reverse` endpoint is available. Such a database is significantly
 smaller than a fully searchable photon database and also faster to import.
 
+### Changing normalization filters
+
+OpenSearch is setup to apply an initial normalization to all imported names
+and to all queries. This allows to get rid of smaller differences in
+spelling, for example, upper case vs. lower case.
+
+The normalization filters can be customized with the parameter
+**-normalization-filters**. It takes a comma-separated list of OpenSearch
+token filters. You can use any filter from
+[OpenSearch's standard list of filters](https://docs.opensearch.org/latest/analyzers/token-filters/index/)
+as long as they don't require custom parameters.
+
+Normalization filters can only be set on first import because it is vital
+that the same filters are used when importing and querying data. If you want
+to use different normalization filters, you need to reimport the database
+from scratch.
+
 ## Updating Data
 
 Updating a photon database can at the moment only be done from a
