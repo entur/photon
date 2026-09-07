@@ -1,6 +1,7 @@
 package de.komoot.photon;
 
 import de.komoot.photon.config.PhotonDBConfig;
+import de.komoot.photon.config.PhotonDBLayoutConfig;
 import de.komoot.photon.opensearch.OpenSearchResult;
 import de.komoot.photon.opensearch.PhotonIndex;
 import de.komoot.photon.searcher.PhotonResult;
@@ -47,7 +48,12 @@ public class TestServer {
     }
 
     public void reloadDBProperties(DatabaseProperties dbProperties) throws IOException {
-        testServer.recreateIndex(dbProperties);
+        var lConf = new PhotonDBLayoutConfig();
+        reloadDBProperties(dbProperties, lConf.getNormalizationFilters());
+    }
+
+    public void reloadDBProperties(DatabaseProperties dbProperties, List<String> normalizationFilters) throws IOException {
+        testServer.recreateIndex(dbProperties, normalizationFilters);
         testServer.refreshIndexes();
 
     }

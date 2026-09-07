@@ -148,7 +148,7 @@ public class App {
 
         try {
             LOGGER.info("Reinitializing database index with languages {}.", String.join(",", dbProperties.getLanguages()));
-            esServer.recreateIndex(dbProperties);
+            esServer.recreateIndex(dbProperties, cli.getLayoutConfig().getNormalizationFilters());
         } catch (IOException ex) {
             LOGGER.error("Cannot initialize database", ex);
             return;
