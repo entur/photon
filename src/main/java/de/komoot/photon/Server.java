@@ -25,6 +25,7 @@ import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBui
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 @NullMarked
 public class Server {
@@ -130,13 +131,15 @@ public class Server {
         }
     }
 
-    public void recreateIndex(DatabaseProperties dbProperties) throws IOException {
+    public void recreateIndex(DatabaseProperties dbProperties, List<String> normalizationFilters) throws IOException {
         // delete any existing data
         if (client.indices().exists(e -> e.index(PhotonIndex.NAME)).value()) {
             client.indices().delete(d -> d.index(PhotonIndex.NAME));
         }
 
-        new IndexSettingBuilder().setShards(5).createIndex(client, PhotonIndex.NAME);
+        new IndexSettingBuilder()
+                .setShards(5)
+                .createIndex(client, PhotonIndex.NAME, normalizationFilters);
 
         new IndexMapping(dbProperties.getReverseOnly()).putMapping(client, PhotonIndex.NAME);
         dbProperties.setSynonymFiltersAvailable(true);

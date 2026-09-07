@@ -27,6 +27,7 @@ public class PhotonCli {
                                 cmdline.getImportFileConfig(),
                                 cmdline.getPostgresqlConfig(),
                                 cmdline.getPhotonDBConfig(),
+                                cmdline.getLayoutConfig(),
                                 cmdline.getImportFilterConfig()))
                 .addCommand(
                         Commands.CMD_UPDATE.getCmd(),
@@ -97,6 +98,8 @@ public class PhotonCli {
     public PhotonDBConfig getPhotonDBConfig() {
         return cmdline.getPhotonDBConfig();
     }
+
+    public PhotonDBLayoutConfig getLayoutConfig() { return cmdline.getLayoutConfig(); }
 
     public ImportFilterConfig getImportFilterConfig() {
         return cmdline.getImportFilterConfig();

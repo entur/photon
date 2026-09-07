@@ -18,11 +18,13 @@ import de.komoot.photon.config.*;
 public class CommandImport {
 
     public CommandImport(GeneralConfig gCfg, ImportFileConfig ifCfg,
-                         PostgresqlConfig pgCfg, PhotonDBConfig dbCfg, ImportFilterConfig filtCfg) {
+                         PostgresqlConfig pgCfg, PhotonDBConfig dbCfg,
+                         PhotonDBLayoutConfig layoutCfg, ImportFilterConfig filtCfg) {
         generalConfig = gCfg;
         importFileConfig = ifCfg;
         postgresqlConfig = pgCfg;
         photonDBConfig = dbCfg;
+        layoutConfig = layoutCfg;
         importFilterConfig = filtCfg;
     }
 
@@ -37,6 +39,9 @@ public class CommandImport {
 
     @ParametersDelegate
     private final PhotonDBConfig photonDBConfig;
+
+    @ParametersDelegate
+    private final PhotonDBLayoutConfig layoutConfig;
 
     @ParametersDelegate
     private final ImportFilterConfig importFilterConfig;

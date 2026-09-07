@@ -16,6 +16,7 @@ public class PhotonUsageFormatter implements IUsageFormatter {
     private static final String[] OPTION_GROUPS = {
             GeneralConfig.GROUP,
             PhotonDBConfig.GROUP,
+            PhotonDBLayoutConfig.GROUP,
             ApiServerConfig.GROUP,
             ImportFileConfig.GROUP,
             UpdateInitConfig.GROUP,

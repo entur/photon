@@ -75,6 +75,11 @@ public class ESBaseTester {
         server.reloadDBProperties(dbProperties);
     }
 
+    public void setUpES(Path dataDirectory, List<String> normalizationFilters) throws IOException {
+        server = new TestServer(dataDirectory.toString(), TEST_CLUSTER_NAME);
+        server.reloadDBProperties(dbProperties, normalizationFilters);
+    }
+
     protected Importer makeImporter() {
         return server.createImporter(dbProperties);
     }

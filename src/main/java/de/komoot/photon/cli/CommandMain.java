@@ -14,6 +14,9 @@ public class CommandMain {
     private final PhotonDBConfig photonDBConfig = new PhotonDBConfig();
 
     @ParametersDelegate
+    private final PhotonDBLayoutConfig layoutConfig = new PhotonDBLayoutConfig();
+
+    @ParametersDelegate
     private final ImportFilterConfig importFilterConfig = new ImportFilterConfig();
 
     @ParametersDelegate
@@ -41,6 +44,10 @@ public class CommandMain {
 
     PhotonDBConfig getPhotonDBConfig() {
         return photonDBConfig;
+    }
+
+    PhotonDBLayoutConfig getLayoutConfig() {
+        return layoutConfig;
     }
 
     ImportFilterConfig getImportFilterConfig() {

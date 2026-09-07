@@ -39,8 +39,8 @@ public class IndexSettingBuilder {
         return this;
     }
 
-    public void createIndex(OpenSearchClient client, String indexName) throws IOException {
-        addDefaultSettings();
+    public void createIndex(OpenSearchClient client, String indexName, List<String> normalizationFilters) throws IOException {
+        addDefaultSettings(normalizationFilters);
         updateSynonymFilters();
 
         client.indices().create(r -> r
@@ -177,13 +177,7 @@ public class IndexSettingBuilder {
         return builder.build();
     }
 
-    private void addDefaultSettings() {
-        final var NORMALIZATION_FILTERS = List.of(
-                "lowercase",
-                "asciifolding",
-                "german_normalization"
-        );
-
+    private void addDefaultSettings(List<String> normalizationFilters) {
         // Classification filtering.
         settings.filter("keep_classification", f -> f.definition(d -> d
                 .patternReplace(p -> p
@@ -243,13 +237,13 @@ public class IndexSettingBuilder {
                         .flags(""))
         ));
 
-        settings.analyzer("search", f -> f.custom(buildSearchAnalyzer(NORMALIZATION_FILTERS)));
+        settings.analyzer("search", f -> f.custom(buildSearchAnalyzer(normalizationFilters)));
 
         settings.analyzer("search_prefix", f -> f.custom(d -> d
                 .charFilter("normalize_apostrophes")
                 .tokenizer("keyword")
                 .filter("keep_alphanum")
-                .filter(NORMALIZATION_FILTERS)
+                .filter(normalizationFilters)
         ));
 
         // Collector analyzers.
@@ -311,10 +305,10 @@ public class IndexSettingBuilder {
 
 
         settings.analyzer("index_fullword", f -> f.custom(
-                buildClassificationAnalyser("fullword", NORMALIZATION_FILTERS, List.of())));
+                buildClassificationAnalyser("fullword", normalizationFilters, List.of())));
 
         settings.analyzer("index_ngram", f -> f.custom(
-                buildClassificationAnalyser("ngram", NORMALIZATION_FILTERS, List.of("prefix_edge_ngram"))
+                buildClassificationAnalyser("ngram", normalizationFilters, List.of("prefix_edge_ngram"))
         ));
 
         settings.analyzer("index_name_ngram", f -> f.custom(d -> d
@@ -324,7 +318,7 @@ public class IndexSettingBuilder {
                         "delimiter_whitespace",
                         "delimiter_terms",
                         "name_edge_ngram")
-                .filter(NORMALIZATION_FILTERS)
+                .filter(normalizationFilters)
                 .filter("unique")
         ));
 
@@ -333,7 +327,7 @@ public class IndexSettingBuilder {
                 .tokenizer("collection_split")
                 .filter("delimited_term_freq",
                         "keep_alphanum")
-                .filter(NORMALIZATION_FILTERS)
+                .filter(normalizationFilters)
                 .filter("prefix_edge_ngram", "unique")
         ));
 
@@ -341,7 +335,7 @@ public class IndexSettingBuilder {
                 .charFilter("normalize_apostrophes")
                 .tokenizer("keyword")
                 .filter("keep_alphanum")
-                .filter(NORMALIZATION_FILTERS)
+                .filter(normalizationFilters)
                 .filter("unique")
         ));
 
@@ -359,7 +353,7 @@ public class IndexSettingBuilder {
         settings.analyzer("index_raw", f -> f.custom(d -> d
                 .charFilter("normalize_apostrophes", "punctuationgreedy")
                 .tokenizer("standard")
-                .filter(NORMALIZATION_FILTERS)
+                .filter(normalizationFilters)
         ));
 
         settings.analyzer("index_categories", f -> f.custom(d -> d
